@@ -1,34 +1,34 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
 interface JwtPayload {
   username: string;
+  // You can add other fields such as id, exp, etc.
 }
 
-// Extend the Request interface to include a "user" property
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: JwtPayload;
+export const authenticateToken: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
+  // Get the token from the Authorization header in "Bearer <token>" format
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return;
   }
-}
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  // Retrieve the token from the Authorization header ("Bearer <token>")
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
+  const token = authHeader.split(' ')[1];
   if (!token) {
-    return res.sendStatus(401); // Unauthorized if no token is present
+    return;
   }
 
-  // Verify the token using the secret key
+  // Verify the token using the secret key from environment variables
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string, (err, decoded) => {
     if (err) {
-      return res.sendStatus(403); // Forbidden if token verification fails
+    res.sendStatus(403); 
+    return;
     }
 
-    // Attach the user data (decoded token payload) to the request object
-    req.user = decoded as JwtPayload;
+    // Attach the decoded payload to the request object for further use
+    (req as any).user = decoded as JwtPayload;
     next();
   });
 };
+
+export default authenticateToken;
